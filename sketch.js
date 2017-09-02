@@ -37,9 +37,9 @@ function setup() {
   noStroke();
   noCursor();
   virtualWidth = width;
-  const bubbleFactor = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace));
   virtualHeight = height;
-  numberOfBubbles = bubbleFactor / log(minRadius * 2); // random(bubbleFactor / 1.75, bubbleFactor / 1.33);
+  const bubbleFactor = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace));
+  numberOfBubbles = bubbleFactor / log(minRadius * 1.4); // random(bubbleFactor / 1.75, bubbleFactor / 1.33);
   let lts = 0;
   bubbles[0] = new Bubble(virtualWidth / 2, virtualHeight / 2, random(minRadius, maxRadius), initialColor, initialAlpha);
   updateGrid();
@@ -75,14 +75,9 @@ function setup() {
     if (found) {
       triesRecord.push(tries);
       bubbles[i] = new Bubble(bx, by, br, initialColor, initialAlpha);
-      addToGrid(bubbles[i]);
+      addToGrid2(bubbles[i]);
     }
   }
-  /*bubbles.sort(function(a, b) {
-    if (a.radius < b.radius) return -1;
-    if (a.radius == b.radius) return 0;
-    if (a.radius > b.radius) return 1;
-  });*/
   console.log(lts);
   simulationInterval = setInterval(simulateTimeStep, mpf);
 }
@@ -97,7 +92,7 @@ function draw() {
   drawingFlag = 0;
   push();
   noFill();
-  stroke([255, 0, 0], 127);
+  stroke([255, 0, 0, 0x7F]);
   strokeWeight(3);
   ellipse(mouseX, mouseY, 36, 36);
   line(mouseX - 22, mouseY, mouseX + 22, mouseY);
@@ -163,20 +158,21 @@ function windowResized() {
         if (found && i < bubbles.length) {
           triesRecord.push(tries);
           bubbles[i].radius = br;
-          bubbles[i].x = bx;
-          bubbles[i].y = by;
+          //bubbles[i].x = bx;
+          //bubbles[i].y = by;
+          bubbles[i].center = [bx, by];
           bubbles[i].burst = 0.75;
-          addToGrid(bubbles[i]);
+          //addToGrid(bubbles[i]);
         }
       } else found = 1;
     }
   }
   //simulateFlag = 0;
   drawingFlag = 0;
-  if (!simulating) {
+  /*if (!simulating) {
     simulateTimeStep();
     draw();
-  }
+  }*/
   console.log(bubbles.length);
 };
 
@@ -185,16 +181,12 @@ function windowResized() {
 function simulateTimeStep() {
   while (drawingFlag || simulateFlag) {}
   simulateFlag = 1;
-  updateGrid();
   for (let i = 0; i < bubbles.length; i++) {
-    bubbles[i].neighbors = [];
     neighborhood = getNeighborhoodFromGrid(bubbles[i].x, bubbles[i].y);
     for (let j = 0; j < neighborhood.length; j++) {
       bubbles[i].collision(neighborhood[j]);
     }
-  }
-  for (let i = 0; i < bubbles.length; i++) {
-    bubbles[i].move(bubbles);
+    bubbles[i].move()
     if (bubbles[i].burst) {
       bubbles[i].history = [];
       const intensity = bubbles[i].burst;
@@ -204,9 +196,10 @@ function simulateTimeStep() {
       //ellipse(bubbles[i].x, bubbles[i].y, 2 * (bubbles[i].farthestNeighbor + maxRadius), 2 * (bubbles[i].farthestNeighbor + maxRadius));
       flashNeighborhood(bubbles[i].x, bubbles[i].y, (concentrated)); // [255, 255, 255]);
       for (let j = 0; j < bubbles[i].neighbors.length; j++) {
+        if (bubbles[i] === bubbles[i].neighbors[i]) continue;
         bubbles[i].neighbors[j].color = interpolateColors(concentrated, bubbles[i].neighbors[j].color, intensity);
       }
-      bubbles[i].color = [0, 0, 0];
+      //bubbles[i].color = invertColor(bubbles[i].color);
       bubbles[i].teleport();
     }
   }
@@ -246,60 +239,19 @@ function simulateTimeStep() {
     });
     targets.forEach(function(bubble) {
       bubble.color = [255, 0, 255];
+      //bubble.color = [255];
       bubble.pop(1);
     });
     children.forEach(function(bubble) {
       bubble.color = [0, 255, 255];
-      bubble.pop(0.125);
+      //  bubble.color = [0];
+      bubble.pop(0.25);
     });
-    if (neighbors.length % 1 === 0)
+    if (neighbors.length)
       flashNeighborhood(mouseX, mouseY, [255, 255, 255]);
   }
   simulateFlag = 0;
 }
-
-function updateGrid() {
-  gridX = ~~(virtualWidth / searchSpace);
-  gridY = ~~(virtualHeight / searchSpace);
-  gridSpanX = virtualWidth / gridX;
-  gridSpanY = virtualHeight / gridY;
-
-  trackingGrid = [];
-  for (let i = 0; i < gridY * gridX; i++) {
-    trackingGrid[i] = [];
-  }
-
-  for (let i = 0; i < bubbles.length; i++) {
-    const r = bubbles[i].radius;
-    if (bubbles[i].x > virtualWidth || bubbles[i].y > virtualHeight || 0 + r > bubbles[i].x || 0 + r > bubbles[i].y) continue;
-    addToGrid(bubbles[i]);
-  }
-}
-
-function addToGrid(bubble) {
-  const tx = ~~(bubble.x / gridSpanX);
-  const ty = ~~(bubble.y / gridSpanY);
-  const yBottom = constrain(ty - 1, 0, gridY - 1);
-  const yTop = constrain(ty + 1, 0, gridY - 1);
-  const xBottom = constrain(tx - 1, 0, gridX - 1);
-  const xTop = constrain(tx + 1, 0, gridX - 1);
-
-  for (let k = yBottom; k <= yTop; k++) {
-    for (let j = xBottom; j <= xTop; j++) {
-      Array.isArray(trackingGrid[k * gridX + j]) ? trackingGrid[k * gridX + j].push(bubble) : trackingGrid[k * gridX + j] = [bubble];
-    }
-  }
-}
-
-function getNeighborhoodFromGrid(x, y) {
-  const row = ~~(y / gridSpanY);
-  const column = ~~(x / gridSpanX);
-  return Array.isArray(trackingGrid[row * gridX + column]) ? trackingGrid[row * gridX + column] : [];
-};
-
-function getGridCoordinates(x, y) {
-  return createVector(~~(x / gridSpanX), ~~(y / gridSpanY));
-};
 
 function performanceReport() {
   //ts = window.performance.now();
@@ -335,7 +287,7 @@ function performanceReport() {
     //"\nstandard deviation:\n" + (sqrt(iltVariance / innerLoopTimes.length))); // + "\nrunning average:\n" + averageFrameRate);
     reportTime = window.performance.now();
   }
-};
+}
 
 function mousePressed() {
   console.log("Pop bubbles at the mouse pointer.");
@@ -346,22 +298,6 @@ function mousePressed() {
   flashNeighborhood(mouseX, mouseY, [255, 255, 255]);
 }
 
-
-function flashNeighborhood(x, y, color) {
-  const tx = ~~(x / gridSpanX);
-  const ty = ~~(y / gridSpanY);
-  const yBottom = constrain(ty - 1, 0, gridY - 1);
-  const yTop = constrain(ty + 1, 0, gridY - 1);
-  const xBottom = constrain(tx - 1, 0, gridX - 1);
-  const xTop = constrain(tx + 1, 0, gridX - 1);
-  fill(color, 255);
-  for (let k = yBottom; k <= yTop; k++) {
-    for (let j = xBottom; j <= xTop; j++) {
-      rect(j * gridSpanX, k * gridSpanY, gridSpanX, gridSpanY);
-
-    }
-  }
-}
 
 function keyTyped() {
   console.log("Key pressed: " + key);
@@ -440,9 +376,15 @@ function keyTyped() {
       break;
     case 's':
     case 'S':
+      console.log("Scattering bubbles.");
       bubbles.forEach(function(bubble) {
         bubble.pop(0.5);
       });
+      break;
+    case 't':
+    case 'T':
+      console.log("Running benchmark...\n");
+      benchmarker();
       break;
   }
 
@@ -457,4 +399,33 @@ function makeToggle() {
   }
   simulating = !simulating;
   console.log("Simulation running: " + simulating);
+}
+
+
+function benchmarker() {
+  var oltSum = 0,
+    oltAverage = 0,
+    oltVariance = 0,
+    benchmarkStop = 0;
+  simulating = 0;
+  clearInterval(simulationInterval);
+  var olTimes = [];
+  while (drawingFlag) {}
+  //noLoop();
+  var benchmarkStart = window.performance.now();
+  for (var ii = 0; ii < fps * 60 * 25; ii++) {
+    var oltStart = window.performance.now();
+    simulateTimeStep();
+    olTimes.push(window.performance.now() - oltStart);
+  }
+  benchmarkStop = window.performance.now();
+  //loop();
+  olTimes.forEach(function(olt) {
+    oltSum += olt;
+  });
+  oltAverage = oltSum / olTimes.length;
+  olTimes.forEach(function(olt) {
+    oltVariance += (oltAverage - olt) ** 2;
+  });
+  console.log("++++LoopTimes++++\nAverage:\n" + oltAverage + "\nStandard Deviation:\n" + (sqrt(oltVariance / olTimes.length)) + "\nElapsed Time: " + (benchmarkStop - benchmarkStart));
 }

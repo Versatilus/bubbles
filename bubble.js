@@ -1,7 +1,7 @@
 function Bubble(x, y, radius, coloration, alpha) {
   this._x = x;
   this._y = y;
-  this.center = createVector(x, y);
+  this._center = [x, y];
   this.color = coloration.slice();
   this.startColor = coloration.slice();
   this._radius = radius;
@@ -13,13 +13,15 @@ function Bubble(x, y, radius, coloration, alpha) {
   this._momentum = [0, 0];
   this.elasticity = random(0.51, 0.650);
   this.alpha = alpha ? alpha : 127;
-  this.neighbors = [];
+  this._neighbors = [];
   this.burst = 0;
   this.growing = 0;
+  this.topSpeed = topSpeed * random(0.9, 1.1);
   this.history = [createVector(x, y)];
-  this._xspeed = random(-topSpeed / 3, topSpeed / 3);
-  this._yspeed = random(-topSpeed / 3, topSpeed / 3);
+  this._xspeed = random(-this.topSpeed / 3, this.topSpeed / 3);
+  this._yspeed = random(-this.topSpeed / 3, this.topSpeed / 3);
   this.farthestNeighbor = 0;
+  this.hasMoved = 0;
 }
 
 Bubble.prototype.shareColor = function(other) {
@@ -38,33 +40,40 @@ Bubble.prototype.move = function(others) {
   if (this.x - this.radius <= 0) {
     this.growing = 0.25;
     this.xspeed *= random(-1.025, -0.975);
-    this.color = interpolateColors(this.color, [255, 0, 0], 0.75);
+    //this.color = interpolateColors(this.color, [0], 0.05);
+    this.color = interpolateColors(this.color, [255, 0, 0], 0.5);
     this.bounces++;
   } else if (this.x + this.radius >= virtualWidth) {
     this.growing = 0.25;
     this.xspeed *= random(-1.025, -0.975);
-    this.color = interpolateColors(this.color, [0, 0, 255], 0.75);
+    //this.color = interpolateColors(this.color, [255], 0.5);
+    this.color = interpolateColors(this.color, [0, 0, 255], 0.5);
     this.bounces++;
   }
   if (this.y - this.radius <= 0) {
     this.growing = 0.25;
     this.yspeed *= random(-1.025, -0.975);
-    this.color = interpolateColors(this.color, [0, 255, 0], 0.75);
+    //this.color = interpolateColors(this.color, [0], 0.05);
+    this.color = interpolateColors(this.color, [0, 255, 0], 0.5);
     this.bounces++;
   } else if (this.y + this.radius >= virtualHeight) {
     this.growing = 0.25;
     this.yspeed *= random(-1.025, -0.975);
+    //this.color = interpolateColors(this.color, [255], 0.5);
     this.color = interpolateColors(concentrateColor(this.color), this.color, 0.25);
     this.bounces++;
   }
   if (this.radius > maxRadius) {
+    //this.color = [0]; // interpolateColors(this.color, [255], 0.5);
     this.radius = minRadius;
-    this.burst = 0.05;
+    //this.burst = 0.25;
+    this.pop(0.25);
   }
-  this.farthestNeighbor = 0;
+
   for (let i = 0; i < this.neighbors.length; i++) {
+    if (this === this.neighbors[i]) continue;
     const distance = dist(this.x + this.xspeed, this.y + this.yspeed, this.neighbors[i].x, this.neighbors[i].y);
-    this.farthestNeighbor = max(distance, this.farthestNeighbor);
+    //this.farthestNeighbor = max(distance, this.farthestNeighbor);
     if (distance < this.radius + this.growing + this.neighbors[i].radius + this.neighbors[i].growing) {
       this.history.push(createVector(this.x, this.y));
       if (this.history.length - (fps * 5) > 0) {
@@ -83,7 +92,7 @@ Bubble.prototype.move = function(others) {
         //console.log(xAverage + " " + yAverage + "\n" + this.x + " " + this.y);
         if (1.025 * xAverage > this.x && this.x > 0.975 * xAverage && 1.025 * yAverage > this.y && this.y > 0.975 * yAverage) {
           //this.radius = minRadius;
-          this.color = [0, 0, 0];
+          //this.color = [0];
           this.pop(0.95);
         }
       }
@@ -93,8 +102,7 @@ Bubble.prototype.move = function(others) {
   //if (this.neighbors.length > 0) return;
   this.radius += this.growing;
   this.growing = 0;
-  this.x += this.xspeed;
-  this.y += this.yspeed;
+  this.center = [this.x + this.xspeed, this.y + this.yspeed];
   //this.history.push(createVector(this.x, this.y));
 }
 
@@ -103,7 +111,6 @@ Bubble.prototype.collision = function(other) {
   const xDistance = this.x + this.xspeed - other.x;
   const yDistance = this.y + this.yspeed - other.y;
   //if (abs(xDistance) > searchSpace - 2 * topSpeed && abs(yDistance) > searchSpace - 2 * topSpeed) return;
-  this.neighbors.push(other);
   const distance = sqrt(xDistance ** 2 + yDistance ** 2);
   if (distance <= (this.radius + other.radius + (0.125 * (minRadius / this.radius)))) {
     this.growing = (0.125 * (maxRadius / (this.radius + (maxRadius - minRadius))));
@@ -185,9 +192,10 @@ Bubble.prototype.teleport = function() {
       }
     }
   }
-  this.x = bx;
-  this.y = by;
-  updateGrid();
+  //this.x = bx;
+  //this.y = by;
+  this.topSpeed = topSpeed * random(0.9, 1.1);
+  this.center = [bx, by];
   return 1;
 };
 
@@ -195,13 +203,14 @@ Bubble.prototype.pop = function(intensity) {
   this.history = [];
   const concentrated = concentrateColor(this.color);
   fill(concentrated, 255);
-  //flashNeighborhood(this.x, this.x, concentrated);
-  ellipse(this.x, this.y, 2 * (this.farthestNeighbor), 2 * (this.farthestNeighbor));
+  flashNeighborhood(this.x, this.y, concentrated);
+  //ellipse(this.x, this.y, 2 * (this.farthestNeighbor), 2 * (this.farthestNeighbor));
   for (let j = 0; j < this.neighbors.length; j++) {
+    if (this === this.neighbors[j]) continue;
     this.neighbors[j].color = interpolateColors(concentrated, this.neighbors[j].color, intensity);
   }
   this.radius = minRadius;
-  this.color = [0, 0, 0];
+  //this.color = invertColor(this.color);
   return this.teleport();
 }
 
@@ -211,23 +220,60 @@ Object.defineProperties(Bubble.prototype, {
       return this._x;
     },
     set: function(xval) {
-      this._x = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
-    }
+      //this.hasMoved = 1;
+      let older = getGridCoordinates(this._x, this._y);
+      let newer = getGridCoordinates(xval, this._y);
+      if (older[0] != newer[0]) {
+        removeFromGrid2(this);
+        this._x = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
+        addToGrid2(this);
+      } else {
+        this._x = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
+      }
+    },
   },
   'y': {
     get: function() {
       return this._y;
     },
     set: function(yval) {
-      this._y = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
-    }
+      //this.hasMoved = 1;
+      let older = getGridCoordinates(this._x, this._y);
+      let newer = getGridCoordinates(this._x, yval);
+      if (older[1] != newer[1]) {
+        removeFromGrid2(this);
+        this._y = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
+        addToGrid2(this);
+      } else {
+        this._y = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
+      }
+    },
+  },
+  'center': {
+    get: function() {
+      return [this._x, this._y];
+    },
+    set: function(xyval) {
+      //this.hasMoved = 1;
+      let older = getGridCoordinates(this._x, this._y);
+      let newer = getGridCoordinates(xyval[0], xyval[1]);
+      if (older[0] != newer[0] || older[1] != newer[1]) {
+        removeFromGrid2(this);
+        this._x = constrain(xyval[0], 0 + this.radius, virtualWidth - this.radius);
+        this._y = constrain(xyval[1], 0 + this.radius, virtualHeight - this.radius);
+        addToGrid2(this);
+      } else {
+        this._x = constrain(xyval[0], 0 + this.radius, virtualWidth - this.radius);
+        this._y = constrain(xyval[1], 0 + this.radius, virtualHeight - this.radius);
+      }
+    },
   },
   'xspeed': {
     get: function() {
       return this._xspeed; // != 0 ? constrain(this._xspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
     },
     set: function(x) {
-      this._xspeed = x !== 0 ? constrain(x, -topSpeed, topSpeed) : random(-0.01, 0.01);
+      this._xspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
     }
   },
   'yspeed': {
@@ -235,7 +281,7 @@ Object.defineProperties(Bubble.prototype, {
       return this._yspeed; // != 0 ? constrain(this._yspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
     },
     set: function(x) {
-      this._yspeed = x !== 0 ? constrain(x, -topSpeed, topSpeed) : random(-0.01, 0.01);
+      this._yspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
     }
   },
   'momentum': {
@@ -272,30 +318,38 @@ Object.defineProperties(Bubble.prototype, {
       this._radius = x;
       this._diameter = 2 * x;
     }
+  },
+  'neighbors': {
+    get: function() {
+      //var i = 0,        moved = this.hasMoved;
+      //while (!moved && i < this._neighbors.length) {
+      //moved = this._neighbors[i].hasMoved;
+      //i++;
+      //}
+      /*if (moved) {
+        //this._neighbors = [];
+        //while (this._neighbors.length > 0) this._neighbors.pop();
+        var tmp = (getNeighborhoodFromGrid(this.x, this.y))
+          .slice();
+        //for (let i = 0; i < tmp.length; i++)
+        //if (tmp[i] !== this) this._neighbors.push(tmp[i]);
+        while ((i = tmp.indexOf(this)) !== -1) tmp.splice(i, 1);
+        this._neighbors = tmp;
+        this.hasMoved = 0;
+      }*/
+      this._neighbors = getNeighborhoodFromGrid(this.x, this.y);
+      return this._neighbors;
+    },
+  },
+  'farthestNeighbor': {
+    get: function() {
+      let farthest = 0;
+      for (let i = 0; i < this.neighbors.length; i++) {
+        if (this === this.neighbors[i]) continue;
+        let distance = dist(this.x + this.xspeed, this.y + this.yspeed, this.neighbors[i].x, this.neighbors[i].y);
+        farthest = max(distance, farthest);
+      }
+      return farthest;
+    }
   }
 });
-
-function invertColor(color) {
-  var tmp = [];
-  for (var i = 0; i < color.length; i++)
-    tmp[i] = color[i] ^ 0xFF;
-  return tmp;
-};
-
-function interpolateColors(c1, c2, weight = 0.5) {
-  var cc = [];
-  otherWeight = (2 - 2 * weight);
-  for (var i = 0; i < c1.length; i++)
-    cc[i] = sqrt((weight * 2 * (c1[i] ** 2) + otherWeight * (c2[i] ** 2)) / 2);
-  return cc;
-};
-
-function concentrateColor(color) {
-  r = color[0];
-  g = color[1];
-  b = color[2];
-  if (b < r && r > g) return [255, 0, 0];
-  if (r < g && g > b) return [0, 255, 0];
-  if (r < b && b > g) return [0, 0, 255];
-  return [r, g, b]; //[255, 255, 255];
-};
