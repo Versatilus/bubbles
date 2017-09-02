@@ -6,7 +6,7 @@ var mpf = 1000 / fps;
 var drawTimes = [mpf];
 var lastFrameTime = 0;
 var minRadius = 2;
-var maxRadius = 16;
+var maxRadius = 24;
 var topSpeed = 5;
 var numberOfBubbles = 500;
 const initialColor = [255, 255, 255];
@@ -39,7 +39,7 @@ function setup() {
   virtualWidth = width;
   virtualHeight = height;
   const bubbleFactor = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace));
-  numberOfBubbles = bubbleFactor / log(minRadius * 1.4); // random(bubbleFactor / 1.75, bubbleFactor / 1.33);
+  numberOfBubbles = bubbleFactor / log(minRadius * 1.42); // random(bubbleFactor / 1.75, bubbleFactor / 1.33);
   let lts = 0;
   bubbles[0] = new Bubble(virtualWidth / 2, virtualHeight / 2, random(minRadius, maxRadius), initialColor, initialAlpha);
   updateGrid();
@@ -381,7 +381,7 @@ function keyTyped() {
         bubble.pop(0.5);
       });
       break;
-    case 't':
+      //case 't':
     case 'T':
       console.log("Running benchmark...\n");
       benchmarker();

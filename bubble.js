@@ -51,13 +51,13 @@ Bubble.prototype.move = function(others) {
     this.bounces++;
   }
   if (this.y - this.radius <= 0) {
-    this.growing = 0.25;
+    this.growing = 0.5;
     this.yspeed *= random(-1.025, -0.975);
     //this.color = interpolateColors(this.color, [0], 0.05);
     this.color = interpolateColors(this.color, [0, 255, 0], 0.5);
     this.bounces++;
   } else if (this.y + this.radius >= virtualHeight) {
-    this.growing = 0.25;
+    this.growing = 0.5;
     this.yspeed *= random(-1.025, -0.975);
     //this.color = interpolateColors(this.color, [255], 0.5);
     this.color = interpolateColors(concentrateColor(this.color), this.color, 0.25);
@@ -67,7 +67,7 @@ Bubble.prototype.move = function(others) {
     //this.color = [0]; // interpolateColors(this.color, [255], 0.5);
     this.radius = minRadius;
     //this.burst = 0.25;
-    this.pop(0.25);
+    this.pop(0.075);
   }
 
   for (let i = 0; i < this.neighbors.length; i++) {
@@ -113,7 +113,7 @@ Bubble.prototype.collision = function(other) {
   //if (abs(xDistance) > searchSpace - 2 * topSpeed && abs(yDistance) > searchSpace - 2 * topSpeed) return;
   const distance = sqrt(xDistance ** 2 + yDistance ** 2);
   if (distance <= (this.radius + other.radius + (0.125 * (minRadius / this.radius)))) {
-    this.growing = (0.125 * (maxRadius / (this.radius + (maxRadius - minRadius))));
+    this.growing = (0.0625 * (maxRadius / (this.radius + (maxRadius - minRadius))));
     //other.radius += 0.25;
     //this.lastCollision = other;
     const myWeight = (this.radius);
@@ -192,9 +192,9 @@ Bubble.prototype.teleport = function() {
       }
     }
   }
-  //this.x = bx;
-  //this.y = by;
-  this.topSpeed = topSpeed * random(0.9, 1.1);
+  this.topSpeed = topSpeed * random(0.75, 1.25);
+  this.xspeed = random(-this.topSpeed, this.topSpeed);
+  this.yspeed = random(-this.topSpeed, this.topSpeed);
   this.center = [bx, by];
   return 1;
 };
@@ -270,7 +270,7 @@ Object.defineProperties(Bubble.prototype, {
   },
   'xspeed': {
     get: function() {
-      return this._xspeed; // != 0 ? constrain(this._xspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
+      return this._xspeed;
     },
     set: function(x) {
       this._xspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
@@ -278,7 +278,7 @@ Object.defineProperties(Bubble.prototype, {
   },
   'yspeed': {
     get: function() {
-      return this._yspeed; // != 0 ? constrain(this._yspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
+      return this._yspeed;
     },
     set: function(x) {
       this._yspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
