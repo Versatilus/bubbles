@@ -1,3 +1,4 @@
+var myCanvas;
 var bubbles = [];
 var virtualHeight = 1000;
 var virtualWidth = 1000;
@@ -5,12 +6,12 @@ var fps = 25;
 var mpf = 1000 / fps;
 var drawTimes = [mpf];
 var lastFrameTime = 0;
-var minRadius = 2;
-var maxRadius = 24;
-var topSpeed = 5;
-var numberOfBubbles = 500;
+var minRadius = 4;
+var maxRadius = 48;
+var topSpeed = 15;
+var numberOfBubbles = 25;
 const initialColor = [255, 255, 255];
-const initialAlpha = 0x7F;
+const initialAlpha = 0xBF;
 var averageFrameRate = fps;
 var recentFrameRates = [];
 var innerLoopTimes = [];
@@ -28,22 +29,54 @@ let gridSpanX = virtualWidth / gridX;
 let gridSpanY = virtualHeight / gridY;
 let triesRecord = [];
 var laserBeams = false;
-var simulationInterval, reportInterval;
+var simulationInterval, reportInterval, blobInterval;
 var simulating = true,
   reporting = false;
 
+
+var roots = [];
+
+
+var img;
+var blobGridX;
+var blobGridY;
+var blobGridXFactor;
+var blobGridYFactor;
+var blobGridXScale = 1;
+var blobGridYScale = 1;
+
+function calculateBlobGrid(xScale, yScale) {
+  blobGridXScale = typeof(xScale) === 'number' ? xScale : typeof(blobGridXScale) === 'number' ? blobGridXScale : 1;
+  blobGridYScale = typeof(yScale) === 'number' ? yScale : typeof(blobGridYScale) === 'number' ? blobGridYScale : 1;
+  blobGridX = ~~(gridSpanX * blobGridXScale);
+  blobGridY = ~~(gridSpanY * blobGridYScale);
+  blobGridXFactor = virtualWidth / blobGridX;
+  blobGridYFactor = virtualHeight / blobGridY;
+  img = createGraphics(blobGridX, blobGridY);
+  roots = [];
+  for (var zz = 0; zz < ~~(1.1 * (virtualHeight ** 2 + virtualWidth ** 2)); zz++) roots[zz] = Math.sqrt(zz);
+}
+
+
+function preload() {
+  //img = loadImage("resources/crack.jpg");
+}
+
+
+
 function setup() {
-  createCanvas(windowWidth - 5, windowHeight - 5);
-  noStroke();
-  noCursor();
+  pixelDensity(1);
+  myCanvas = createCanvas(windowWidth - 5, windowHeight - 5);
+  strokeWeight(3);
+  ellipseMode(RADIUS);
   virtualWidth = width;
   virtualHeight = height;
   const bubbleFactor = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace));
   numberOfBubbles = bubbleFactor / log(minRadius * 1.42); // random(bubbleFactor / 1.75, bubbleFactor / 1.33);
   let lts = 0;
-  bubbles[0] = new Bubble(virtualWidth / 2, virtualHeight / 2, random(minRadius, maxRadius), initialColor, initialAlpha);
+  //bubbles[0] = new Bubble(0, virtualWidth / 2, virtualHeight / 2, random(minRadius, maxRadius), initialColor, initialAlpha);
   updateGrid();
-  for (let i = 1; i < numberOfBubbles; i++) {
+  for (let i = 0; i < numberOfBubbles; i++) {
     let br = i % (maxRadius - minRadius) + minRadius,
       by = random(0 + br, virtualHeight - br),
       bx = random(0 + br, virtualWidth - br),
@@ -74,42 +107,102 @@ function setup() {
     }
     if (found) {
       triesRecord.push(tries);
-      bubbles[i] = new Bubble(bx, by, br, initialColor, initialAlpha);
+      bubbles[i] = new Bubble(i, bx, by, br, initialColor, initialAlpha);
       addToGrid2(bubbles[i]);
     }
   }
   console.log(lts);
   simulationInterval = setInterval(simulateTimeStep, mpf);
+  console.log("20170822_114438");
+  calculateBlobGrid();
+  blobInterval = setInterval(metaball, mpf * 2);
 }
 
 function draw() {
   if (simulateFlag || drawingFlag) return;
   drawingFlag = 1;
-  background(0xF, 0xF, 0xF, 0x7F);
-  for (let i = 0; i < bubbles.length; i++) {
-    bubbles[i].display();
-  }
+  //vamr background(0xF, 0xF, 0xF, 0x7F);
+  /*
+    for (let i = 0; i < bubbles.length; i++) {
+      bubbles[i].display();
+    }*/
+
+  image(img, 0, 0, virtualWidth, virtualHeight, 0, 0, blobGridX, blobGridY);
   drawingFlag = 0;
-  push();
+  /*push();
   noFill();
   stroke([255, 0, 0, 0x7F]);
   strokeWeight(3);
-  ellipse(mouseX, mouseY, 36, 36);
+  ellipse(mouseX, mouseY, 18, 18);
   line(mouseX - 22, mouseY, mouseX + 22, mouseY);
   line(mouseX, mouseY - 22, mouseX, mouseY + 22);
-  pop();
+  pop();*/
   lastFrameTime = window.performance.now();
+}
+
+
+var minColor = 500124;
+var maxColor = 0;
+var averageColor = 0;
+
+function calculatePixels() {
+  var pixelColor, colorScaler = log(bubbles.length + (maxRadius + minRadius)) * 2,
+    currentColorMin = 500012,
+    currentColorMax = 0,
+    currentColorTotal = 0;
+  var idx, x, y, index, scaledX, scaledY;
+  var p = new Parallel(bubbles);
+  var colormap = [];
+  for (y = 0; y < blobGridY; y++) {
+    scaledY = y * blobGridYFactor;
+    for (x = 0; x < blobGridX; x++) {
+      scaledX = x * blobGridXFactor;
+      idx = (x + y * blobGridX);
+      colormap[idx] = p.map(function colorPixel(bubble) {
+          var pc = (bubble.radius + 1) / ((abs(bubble.x - scaledX) + abs(bubble.y - scaledY)) + 0.5);
+          pc += (1 + colorScaler * bubble.radius) / (roots[~~((bubble.x - scaledX) ** 2 + (bubble.y - scaledY) ** 2)] + 0.5);
+          return pc;
+        })
+        .reduce(function sum(prev, curr) {
+          return prev + curr
+        }, 0);
+
+      currentColorMin = min(currentColorMin, colormap[idx]);
+      currentColorMax = max(currentColorMax, colormap[idx]);
+      currentColorTotal += colormap[idx];
+    }
+  }
+  return colormap;
+}
+
+function metaball() {
+  var pixelColor;
+  var idx, xy, index;
+  var colormap = calculatePixels();
+  xy = colormap.length
+  img.loadPixels();
+  for (idx = 0; idx < xy; idx++) {
+    let rgb = hslToRgb(constrain(map(colormap[idx], minColor, (minColor * log(maxColor) / log(minColor)), 0, 0.833), 0, 1), 1, 0.5);
+    index = 4 * idx;
+    img.pixels[index] = rgb[0];
+    img.pixels[index + 1] = rgb[1];
+    img.pixels[index + 2] = rgb[2];
+    img.pixels[index + 3] = 127;
+  }
+  img.updatePixels();
 }
 
 function windowResized() {
   resizeCanvas(windowWidth - 5, windowHeight - 5);
   virtualWidth = width;
   virtualHeight = height;
-
+  console.log(virtualWidth + " x " + virtualHeight);
   while (drawingFlag || simulateFlag) {}
   drawingFlag = 1;
+
   updateGrid();
-  console.log(bubbles.length);
+  calculateBlobGrid();
+  let before = (bubbles.length);
   /*bubbles.forEach(function(bubble) {
     if (bubble.x > width - bubble.radius || bubble.y > height - bubble.radius) {
       if (!bubble.pop(0.75)) delete bubble;
@@ -125,7 +218,7 @@ function windowResized() {
           //addToGrid(bubbles[i]);
         }
       }
-    }*/
+    } */
   for (let i = 0; i < bubbles.length; i++) {
     const br = minRadius;
     let found = 0,
@@ -173,7 +266,7 @@ function windowResized() {
     simulateTimeStep();
     draw();
   }*/
-  console.log(bubbles.length);
+  console.log("Before: " + before + " After: " + bubbles.length);
 };
 
 
@@ -382,10 +475,10 @@ function keyTyped() {
       });
       break;
       //case 't':
-    case 'T':
-      console.log("Running benchmark...\n");
-      benchmarker();
-      break;
+      /*case 'T':
+        console.log("Running benchmark...\n");
+        benchmarker();
+        break;*/
   }
 
   return false;

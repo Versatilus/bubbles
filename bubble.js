@@ -1,27 +1,31 @@
-function Bubble(x, y, radius, coloration, alpha) {
-  this._x = x;
-  this._y = y;
-  this._center = [x, y];
-  this.color = coloration.slice();
-  this.startColor = coloration.slice();
-  this._radius = radius;
-  this._diameter = 2 * radius,
-    this.bounces = 0;
+var bubbleDimensions = [];
+
+function Bubble(id, x, y, radius, coloration, alpha) {
+  this.id = id >= 0 ? ~~id : ~~random(65536, 16776216);
+  _radius = radius ? radius : random(maxRadius);
+  _x = x ? x : random(virtualWidth);
+  _y = y ? y : random(virtualHeight);
+  _center = [_x, _y];
+  this.color = coloration ? coloration.slice() : [255, 255, 255];
+  this.alpha = alpha ? alpha : 127;
+
+
+  this.startColor = this.color.slice();
+  this.bounces = 0;
   this.maxBounces = 0;
   this.minBounces = 0;
   this.lastCollision = 0;
-  this._momentum = [0, 0];
-  this.elasticity = random(0.51, 0.650);
-  this.alpha = alpha ? alpha : 127;
+  _elasticity = random(0.51, 0.650);
   this._neighbors = [];
   this.burst = 0;
   this.growing = 0;
   this.topSpeed = topSpeed * random(0.9, 1.1);
   this.history = [createVector(x, y)];
-  this._xspeed = random(-this.topSpeed / 3, this.topSpeed / 3);
-  this._yspeed = random(-this.topSpeed / 3, this.topSpeed / 3);
+  _xspeed = random(-this.topSpeed / 3, this.topSpeed / 3);
+  _yspeed = random(-this.topSpeed / 3, this.topSpeed / 3);
   this.farthestNeighbor = 0;
-  this.hasMoved = 0;
+  this.hasPopped = 0;
+  bubbleDimensions[id] = [_center[0], _center[1], _radius, _xspeed, _yspeed, _elasticity];
 }
 
 Bubble.prototype.shareColor = function(other) {
@@ -70,8 +74,9 @@ Bubble.prototype.move = function(others) {
     this.pop(0.075);
   }
 
-  for (let i = 0; i < this.neighbors.length; i++) {
-    if (this === this.neighbors[i]) continue;
+  /*for (let i = 0; i < this.neighbors.length; i++) {
+    if (this.radius / this.neighbors[i].radius > 2 || this.neighbors[i].radius / this.radius > 2 || this === this.neighbors[i]) continue;
+    //if (this === this.neighbors[i]) continue; //this.radius / this.neighbors[i].radius > 2 || this.neighbors[i].radius / this.radius > 2 || this === this.neighbors[i]) continue;
     const distance = dist(this.x + this.xspeed, this.y + this.yspeed, this.neighbors[i].x, this.neighbors[i].y);
     //this.farthestNeighbor = max(distance, this.farthestNeighbor);
     if (distance < this.radius + this.growing + this.neighbors[i].radius + this.neighbors[i].growing) {
@@ -90,15 +95,16 @@ Bubble.prototype.move = function(others) {
         //if (xAverage > virtualWidth) console.log(xAverage);
         //if (2 * searchSpace > this.x > virtualWidth - searchSpace * 2 || searchSpace * 2 > this.y > virtualHeight - searchSpace * 2)
         //console.log(xAverage + " " + yAverage + "\n" + this.x + " " + this.y);
-        if (1.025 * xAverage > this.x && this.x > 0.975 * xAverage && 1.025 * yAverage > this.y && this.y > 0.975 * yAverage) {
+        if (1.0125 * xAverage > this.x && this.x > 0.9875 * xAverage && 1.0125 * yAverage > this.y && this.y > 0.9875 * yAverage) {
           //this.radius = minRadius;
           //this.color = [0];
           this.pop(0.95);
+          console.log(this.x + " " + this.y);
         }
       }
       return;
     }
-  }
+}*/
   //if (this.neighbors.length > 0) return;
   this.radius += this.growing;
   this.growing = 0;
@@ -107,13 +113,16 @@ Bubble.prototype.move = function(others) {
 }
 
 Bubble.prototype.collision = function(other) {
-  if (this == other) return;
+  return;
+  if (this.radius / other.radius > 2 || other.radius / this.radius > 2 || this === other) return;
+  //if (this === other) return; //this.radius / other.radius > 2 || other.radius / this.radius > 2 || this === other) return;
   const xDistance = this.x + this.xspeed - other.x;
   const yDistance = this.y + this.yspeed - other.y;
   //if (abs(xDistance) > searchSpace - 2 * topSpeed && abs(yDistance) > searchSpace - 2 * topSpeed) return;
   const distance = sqrt(xDistance ** 2 + yDistance ** 2);
-  if (distance <= (this.radius + other.radius + (0.125 * (minRadius / this.radius)))) {
-    this.growing = (0.0625 * (maxRadius / (this.radius + (maxRadius - minRadius))));
+  var growthFactor = (0.0625 * (minRadius / this.radius));
+  if (distance <= (this.radius + other.radius + growthFactor)) {
+    this.growing = growthFactor; // (0.0625 * (maxRadius / (this.radius + (maxRadius - minRadius))));
     //other.radius += 0.25;
     //this.lastCollision = other;
     const myWeight = (this.radius);
@@ -164,9 +173,10 @@ Bubble.prototype.collision = function(other) {
 
 
 Bubble.prototype.display = function() {
-  //stroke(invertColor(this.color));
-  fill(this.color, this.alpha);
-  ellipse(this.x, this.y, this.diameter, this.diameter);
+  stroke((this.color));
+  //fill(this.color, this.alpha);
+  noFill();
+  ellipse(this.x, this.y, this.radius, this.radius);
 }
 
 Bubble.prototype.teleport = function() {
@@ -201,14 +211,14 @@ Bubble.prototype.teleport = function() {
 
 Bubble.prototype.pop = function(intensity) {
   this.history = [];
-  const concentrated = concentrateColor(this.color);
-  fill(concentrated, 255);
+  /*const concentrated = concentrateColor(this.color);
+  //fill(concentrated, 255);
   flashNeighborhood(this.x, this.y, concentrated);
   //ellipse(this.x, this.y, 2 * (this.farthestNeighbor), 2 * (this.farthestNeighbor));
   for (let j = 0; j < this.neighbors.length; j++) {
     if (this === this.neighbors[j]) continue;
     this.neighbors[j].color = interpolateColors(concentrated, this.neighbors[j].color, intensity);
-  }
+  }*/
   this.radius = minRadius;
   //this.color = invertColor(this.color);
   return this.teleport();
@@ -217,71 +227,72 @@ Bubble.prototype.pop = function(intensity) {
 Object.defineProperties(Bubble.prototype, {
   'x': {
     get: function() {
-      return this._x;
+      return bubbleDimensions[this.id][0];
     },
     set: function(xval) {
       //this.hasMoved = 1;
-      let older = getGridCoordinates(this._x, this._y);
-      let newer = getGridCoordinates(xval, this._y);
+      let older = getGridCoordinates(this.x, this.y);
+      let newer = getGridCoordinates(xval, this.y);
       if (older[0] != newer[0]) {
         removeFromGrid2(this);
-        this._x = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
+        bubbleDimensions[this.id][0] = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
         addToGrid2(this);
       } else {
-        this._x = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
+        bubbleDimensions[this.id][0] = constrain(xval, 0 + this.radius, virtualWidth - this.radius);
       }
     },
   },
   'y': {
     get: function() {
-      return this._y;
+      return bubbleDimensions[this.id][1];
     },
     set: function(yval) {
       //this.hasMoved = 1;
-      let older = getGridCoordinates(this._x, this._y);
-      let newer = getGridCoordinates(this._x, yval);
+      let older = getGridCoordinates(this.x, this.y);
+      let newer = getGridCoordinates(this.x, yval);
       if (older[1] != newer[1]) {
         removeFromGrid2(this);
-        this._y = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
+        bubbleDimensions[this.id][1] = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
         addToGrid2(this);
       } else {
-        this._y = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
+        bubbleDimensions[this.id][1] = constrain(yval, 0 + this.radius, virtualHeight - this.radius);
       }
     },
   },
   'center': {
     get: function() {
-      return [this._x, this._y];
+      return bubbleDimensions[this.id].slice(0, 2);
     },
     set: function(xyval) {
       //this.hasMoved = 1;
-      let older = getGridCoordinates(this._x, this._y);
+      let older = getGridCoordinates(this.x, this.y);
       let newer = getGridCoordinates(xyval[0], xyval[1]);
       if (older[0] != newer[0] || older[1] != newer[1]) {
         removeFromGrid2(this);
-        this._x = constrain(xyval[0], 0 + this.radius, virtualWidth - this.radius);
-        this._y = constrain(xyval[1], 0 + this.radius, virtualHeight - this.radius);
+        bubbleDimensions[this.id][0] = constrain(xyval[0], 0 + this.radius, virtualWidth - this.radius);
+        bubbleDimensions[this.id][1] = constrain(xyval[1], 0 + this.radius, virtualHeight - this.radius);
         addToGrid2(this);
       } else {
-        this._x = constrain(xyval[0], 0 + this.radius, virtualWidth - this.radius);
-        this._y = constrain(xyval[1], 0 + this.radius, virtualHeight - this.radius);
+        bubbleDimensions[this.id][0] = constrain(xyval[0], 0 + this.radius, virtualWidth - this.radius);
+        bubbleDimensions[this.id][1] = constrain(xyval[1], 0 + this.radius, virtualHeight - this.radius);
       }
     },
   },
   'xspeed': {
     get: function() {
-      return this._xspeed;
+      return bubbleDimensions[this.id][3];
     },
     set: function(x) {
-      this._xspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
+      //this._xspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
+      bubbleDimensions[this.id][3] = constrain(x, -this.topSpeed, this.topSpeed);
     }
   },
   'yspeed': {
     get: function() {
-      return this._yspeed;
+      return bubbleDimensions[this.id][4];
     },
     set: function(x) {
-      this._yspeed = x !== 0 ? constrain(x, -this.topSpeed, this.topSpeed) : random(-0.01, 0.01);
+      bubbleDimensions[this.id][4] = constrain(x, -this.topSpeed, this.topSpeed);
     }
   },
   'momentum': {
@@ -303,20 +314,18 @@ Object.defineProperties(Bubble.prototype, {
   },
   'diameter': {
     get: function() {
-      return this._diameter;
+      return this.radius * 2;
     },
     set: function(x) {
-      this._radius = x / 2;
-      this._diameter = x;
+      this.radius = x / 2;
     }
   },
   'radius': {
     get: function() {
-      return this._radius;
+      return bubbleDimensions[this.id][2];
     },
     set: function(x) {
-      this._radius = x;
-      this._diameter = 2 * x;
+      bubbleDimensions[this.id][2] = x;
     }
   },
   'neighbors': {
