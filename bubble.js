@@ -5,6 +5,7 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
   this.startColor = coloration.slice();
   this.lifespan = lifespan;
   this.radius = radius;
+  this.diameter = radius * 2;
   this.bounces = 0;
   this.maxBounces = 0;
   this.minBounces = 0;
@@ -30,20 +31,20 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
   this.move = function(others) {
     if (this.x - this.radius <= 0) {
       this.xspeed *= random(-1.025, -0.975);
-      this.color = interpolateColors(this.color, [255, 0, 0], 0.33);
+      this.color = interpolateColors(this.color, [255, 0, 0], 0.5);
       this.bounces++;
     } else if (this.x + this.radius >= virtualWidth) {
       this.xspeed *= random(-1.025, -0.975);
-      this.color = interpolateColors(this.color, [0, 0, 255], 0.33);
+      this.color = interpolateColors(this.color, [0, 0, 255], 0.5);
       this.bounces++;
     }
     if (this.y - this.radius <= 0) {
       this.yspeed *= random(-1.025, -0.975);
-      this.color = interpolateColors(this.color, [0, 255, 0], 0.33);
+      this.color = interpolateColors(this.color, [0, 255, 0], 0.5);
       this.bounces++;
     } else if (this.y + this.radius >= virtualHeight) {
       this.yspeed *= random(-1.025, -0.975);
-      this.color = interpolateColors(concentrateColor(this.color), this.color, 0.67);
+      this.color = interpolateColors(concentrateColor(this.color), this.color, 0.5);
       //this.color = invertColor(this.color);
       //this.color = interpolateColors(this.color, [0, 0, 0]);
       //this.color = interpolateColors(this.color, [random(0, 255), random(0, 255), random(0, 255)]);
@@ -51,7 +52,7 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
     }
 
     for (var i = 0; i < this.neighbors.length; i++) {
-      if (dist(this.x + this.xspeed, this.y + this.yspeed, this.neighbors[i].x, this.neighbors[i].y) <= this.radius + this.neighbors[i].radius) {
+      if (dist(this.x + this.xspeed, this.y + this.yspeed, this.neighbors[i].x, this.neighbors[i].y) < this.radius + this.neighbors[i].radius) {
         return;
       }
     }
@@ -62,19 +63,22 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
     this.y = constrain(this.y, 0 + this.radius, virtualHeight - this.radius);
   }
 
-  this.collision = function(other, others) {
+  this.collision = function(other) {
     if (this == other) return;
     var xDistance = this.x + this.xspeed - other.x;
     var yDistance = this.y + this.yspeed - other.y;
-    if (abs(xDistance) > searchSpace - topSpeed && abs(yDistance) > searchSpace - topSpeed) return;
+    //if (abs(xDistance) > searchSpace - 2 * topSpeed && abs(yDistance) > searchSpace - 2 * topSpeed) return;
     this.neighbors.push(other);
     var distance = sqrt(xDistance ** 2 + yDistance ** 2);
-    if (distance <= (this.radius + other.radius)) {
+    if (distance < (this.radius + other.radius)) {
       //this.lastCollision = other;
       let myWeight = (this.radius),
         otherWeight = (other.radius);
       weightRatio = myWeight / otherWeight;
       var distanceFactor = 0.25;
+
+      var myCosTheta = xDistance / distance;
+      var mySinTheta = yDistance / distance;
 
       var thisVector = this.momentum;
       var otherVector = other.momentum;
@@ -117,14 +121,14 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
   this.display = function(index, length) {
     stroke(invertColor(this.color));
     fill(this.color, this.alpha);
-    ellipse(this.x, this.y, this.radius * 2, this.radius * 2);
+    ellipse(this.x, this.y, this.diameter, this.diameter);
   };
 };
 
 Object.defineProperties(Bubble.prototype, {
   'xspeed': {
     get: function() {
-      return this._xspeed != 0 ? constrain(this._xspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
+      return this._xspeed; // != 0 ? constrain(this._xspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
     },
     set: function(x) {
       this._xspeed = x != 0 ? constrain(x, -topSpeed, topSpeed) : random(-0.01, 0.01);
@@ -132,7 +136,7 @@ Object.defineProperties(Bubble.prototype, {
   },
   'yspeed': {
     get: function() {
-      return this._yspeed != 0 ? constrain(this._yspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
+      return this._yspeed; // != 0 ? constrain(this._yspeed, -topSpeed, topSpeed) : random(-0.01, 0.01);
     },
     set: function(x) {
       this._yspeed = x != 0 ? constrain(x, -topSpeed, topSpeed) : random(-0.01, 0.01);
@@ -168,7 +172,7 @@ function interpolateColors(c1, c2, weight = 0.5) {
   var cc = [];
   otherWeight = (2 - 2 * weight);
   for (var i = 0; i < c1.length; i++)
-    cc[i] = sqrt((weight * 2 * (c1[i] ** 2) + otherWeight * (c2[i] ** 2)) / 2);
+    cc[i] = constrain(sqrt((weight * 2 * (c1[i] ** 2) + otherWeight * (c2[i] ** 2)) / 2), 0, 255);
   return cc;
 };
 
