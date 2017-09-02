@@ -5,11 +5,11 @@ var fps = 30;
 var mpf = 1000 / fps;
 var lastFrameTime = 0;
 var minRadius = 8;
-var maxRadius = 24;
-var topSpeed = 16;
+var maxRadius = 20;
+var topSpeed = 8;
 var numberOfBubbles = 400;
 var initialColor = [255, 255, 255];
-var initialAlpha = 0xDF;
+var initialAlpha = 0xBF;
 var averageFrameRate = 60;
 var recentFrameRates = [];
 var avefr = 60;
@@ -23,6 +23,7 @@ for (var i = 0; i < 2000; i++) squares[i] = i * i;
 var roots = [];
 
 
+
 var searchSpace = 2.2 * (maxRadius + topSpeed);
 for (var i = 0; i < 3 * searchSpace * searchSpace; i++) roots[i] = Math.sqrt(i);
 
@@ -34,8 +35,8 @@ function setup() {
   createCanvas(windowWidth - 5, windowHeight - 5);
   virtualHeight = height;
   virtualWidth = width;
-  bubbleFactor = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace)) * 0.5;
-  numberOfBubbles = random(bubbleFactor / 5, bubbleFactor / 2);
+  bubbleFactor = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace));
+  numberOfBubbles = random(bubbleFactor / 1.75, bubbleFactor / 1.33);
   lts = 0;
   bubbles[0] = new Bubble(virtualWidth / 2, virtualHeight / 2, random(minRadius, maxRadius), initialColor, initialAlpha);
   for (var i = 1; i < numberOfBubbles; i++) {
@@ -65,7 +66,7 @@ function draw() {
   recentFrameRates.push(frameRate());
   if (millis() - lastFrameTime < mpf) return;
 
-  background(0xF, 0xF, 0xF, 0xFF);
+  background(0xF, 0xF, 0xF, 0xBF);
   var maxBounces = 0;
   var minBounces = bubbles[0].maxBounces;
   //for (var k = 0; k < 3; k++)
@@ -124,12 +125,13 @@ function windowResized() {
   virtualHeight = height;
   maxBubbles = (~~(virtualWidth / searchSpace)) * (~~(virtualHeight / searchSpace)) / 1.33;
   console.log(maxBubbles);
+  console.log(bubbles.length);
   for (var i = 0; i < bubbles.length; i++) {
     found = 0;
     tries = 0;
     if (bubbles[i].x > width - bubbles[i].radius || bubbles[i].y > height - bubbles[i].radius) {
       while (found != 1) {
-        if (tries == 500) {
+        if (tries == 5000) {
           tries = 0;
           bubbles.splice(i, 1);
           continue;
@@ -139,7 +141,7 @@ function windowResized() {
         bx = random(0 + br, virtualWidth - br);
         found = 1;
         for (var k = 0; k < bubbles.length; k++) {
-          if (dist(bx, by, bubbles[k].x, bubbles[k].y) < searchSpace) {
+          if (dist(bx, by, bubbles[k].x, bubbles[k].y) < searchSpace - topSpeed) {
             found = 0;
             break;
           }
@@ -150,4 +152,5 @@ function windowResized() {
       bubbles[i].y = by;
     }
   }
+  console.log(bubbles.length);
 };

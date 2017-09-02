@@ -10,7 +10,7 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
   this.minBounces = 0;
   this.lastCollision = 0;
   this._momentum = [0, 0];
-  this.elasticity = 0; //random(0.1, 0.650);
+  this.elasticity = random(0.51, 0.650);
   this.alpha = alpha ? alpha : 127;
   this.neighbors = [];
 
@@ -66,7 +66,7 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
     if (this == other) return;
     var xDistance = this.x + this.xspeed - other.x;
     var yDistance = this.y + this.yspeed - other.y;
-    if (abs(xDistance) > searchSpace && abs(yDistance) > searchSpace) return;
+    if (abs(xDistance) > searchSpace - topSpeed && abs(yDistance) > searchSpace - topSpeed) return;
     this.neighbors.push(other);
     var distance = sqrt(xDistance ** 2 + yDistance ** 2);
     if (distance <= (this.radius + other.radius)) {
@@ -74,31 +74,31 @@ function Bubble(x, y, radius, coloration, alpha, lifespan) {
       let myWeight = (this.radius),
         otherWeight = (other.radius);
       weightRatio = myWeight / otherWeight;
-      var distanceFactor = 1;
+      var distanceFactor = 0.25;
 
       var thisVector = this.momentum;
       var otherVector = other.momentum;
 
       //var thisRelative = acos(1);
 
-      var bounceForce = 0; // (thisVector[1] * this.elasticity * weightRatio + otherVector[1] * other.elasticity / weightRatio);
+      var bounceForce = (thisVector[1] * this.elasticity * weightRatio + otherVector[1] * other.elasticity / weightRatio);
       var thisXBounce = cos(thisVector[0] + Math.PI) * bounceForce;
       var thisYBounce = sin(thisVector[0] + Math.PI) * bounceForce;
       var otherXBounce = cos(otherVector[0] + Math.PI) * bounceForce;
       var otherYBounce = sin(otherVector[0] + Math.PI) * bounceForce;
 
-      var xSum = (this.xspeed * weightRatio - other.xspeed / weightRatio); // this.xspeed + other.xspeed; //
-      var ySum = (this.yspeed * weightRatio - other.yspeed / weightRatio); // this.yspeed + other.yspeed; //
-      var myXSum = weightRatio * (this.xspeed - other.xspeed);
+      var xSum = (this.xspeed * weightRatio + other.xspeed / weightRatio); // this.xspeed + other.xspeed; //
+      var ySum = (this.yspeed * weightRatio + other.yspeed / weightRatio); // this.yspeed + other.yspeed; //
+      /*var myXSum = weightRatio * this.xspeed - other.xspeed/weightRatio;
       var myYSum = weightRatio * (this.yspeed - other.yspeed);
       var otherXSum = (this.xspeed - other.xspeed) / weightRatio;
-      var otherYSum = (this.yspeed - other.yspeed) / weightRatio;
+      var otherYSum = (this.yspeed - other.yspeed) / weightRatio;*/
 
 
-      this.xspeed = thisXBounce + myXSum; // xSum; //* random(0.975, 1.025) * distanceFactor;
-      this.yspeed = thisYBounce + myYSum; // * random(0.975, 1.025) * distanceFactor;
-      other.xspeed = otherXBounce + otherXSum; //* random(0.975, 1.025) * distanceFactor;
-      other.yspeed = otherYBounce + otherYSum; //* random(0.975, 1.025) * distanceFactor;
+      this.xspeed = thisXBounce + xSum * random(0.975, 1.025) * distanceFactor;
+      this.yspeed = thisYBounce + ySum * random(0.975, 1.025) * distanceFactor;
+      other.xspeed = otherXBounce + xSum * random(0.975, 1.025) * distanceFactor;
+      other.yspeed = otherYBounce + ySum * random(0.975, 1.025) * distanceFactor;
       this.shareColor(other);
       this.bounces++;
       other.bounces++;
