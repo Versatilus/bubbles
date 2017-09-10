@@ -7,7 +7,7 @@ var mpf = 1000 / fps;
 var minRadius = 20;
 var maxRadius = 60;
 var topSpeed = 20;
-var numberOfBubbles = 0;
+var numberOfBubbles = 100;
 const initialColor = [255, 255, 255];
 var searchSpace = 1.2 * (maxRadius + topSpeed);
 let trackingGrid = [];
@@ -152,7 +152,7 @@ function setup() {
 }
 
 function draw() {
-    background(0xF, 0xF, 0xF, 0xFF);
+    background(0x1F, 0x1F, 0x1F, 0x7F);
     for(let edge of screenEdges){
 	push();
 	fill(edge.color);
